@@ -109,6 +109,11 @@ dmypy.json
 .DS_Store
 Thumbs.db
 
+# Backup files
+*.bak
+*.bak[0-9]
+*.bak[0-9][0-9]
+
 # =========================
 # Project-Specific Ignore
 # =========================
