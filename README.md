@@ -80,14 +80,29 @@ make
 ## Strain Index Formula
 
 ```
-Strain(t) = a * ||r_t||_2 + b * Sys(t) + c * Δ(t) + d * TP(t)
+Strain(t) = a * ||r_t||_2 + b * Sys(t) + c * Δ(t) + d * TP(t) + e * GTV(t)
 ```
 
 Where:
 - `||r_t||_2` = L2 norm of returns (volatility magnitude)
+- `GTV(t)` = Graph total variation of returns on the correlation graph
 - `Sys(t)` = Systemic ratio (smoothed vs raw returns)
 - `Δ(t)` = Wasserstein distance (topology change)
 - `TP(t)` = Total persistence (H1 features)
+
+## Coefficient tuning (unsupervised)
+
+If you don't have an external target (VIX, drawdowns, etc.), you can normalize component scales and choose weights for interpretability.
+
+Run:
+```bash
+python3 scripts/tune_coeffs_unsupervised.py --out-daily out/daily --scale std
+```
+
+It prints recommended flags you can pass to `daily_run` / backfill:
+```bash
+--a <...> --b <...> --c <...> --d <...> --e <...>
+```
 
 ## Contracts
 

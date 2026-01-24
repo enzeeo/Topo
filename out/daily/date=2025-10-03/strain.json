@@ -1,0 +1,10 @@
+{
+  "date": "2025-10-03",
+  "l2_return_magnitude": 0.33526255788518944,
+  "graph_total_variation": 6.7869276067062145,
+  "systemic_ratio": 0.55012555883448078,
+  "total_persistence": 22.253811999999996,
+  "wasserstein_distance": 3.6301816521395187,
+  "strain_index": 15.20308874954566,
+  "normalized_strain_index": 0.065415405347651293
+}

@@ -8,6 +8,22 @@ You must not assume ownership of the entire pipeline.
 
 ---
 
+## Hard constraints:
+- NEVER explore the repo unless explicitly told to.
+- NEVER explain concepts unless explicitly asked.
+- NEVER restate my question.
+- NEVER summarize unchanged code.
+- Operate only on files I explicitly select or name.
+- Prefer minimal diffs over rewrites.
+- If uncertain, ask ONE short clarification question.
+
+Output rules:
+- Default to code-only output.
+- No prose before or after code unless requested.
+- Keep responses under 150 tokens unless complexity requires more.
+
+---
+
 ## Core Principles
 
 - Correctness over cleverness

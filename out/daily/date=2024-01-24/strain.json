@@ -1,0 +1,10 @@
+{
+  "date": "2024-01-24",
+  "l2_return_magnitude": 0.40356782476377706,
+  "graph_total_variation": 15.490666172840999,
+  "systemic_ratio": 0.42086814940107481,
+  "total_persistence": 12.558514999999993,
+  "wasserstein_distance": 2.9841393663762656,
+  "strain_index": 12.735579863587644,
+  "normalized_strain_index": -0.72174258067797215
+}

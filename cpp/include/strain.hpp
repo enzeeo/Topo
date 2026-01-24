@@ -11,13 +11,15 @@
  *   a single scalar signal.
  *
  * Formula:
- *   Strain = a * ||r_t||_2 + b * Sys + c * delta_W + d * TP
+ *   Strain = a * ||r_t||_2 + b * Sys + c * delta_W + d * TP + e * GTV
  *
  * @param l2_return_magnitude L2 norm of latest return vector.
+ * @param graph_total_variation Graph total variation of latest return vector on Laplacian.
  * @param systemic_ratio Systemic smoothness ratio.
  * @param wasserstein_distance Wasserstein distance to previous diagram.
  * @param total_persistence Total persistence from H1 diagram.
  * @param coefficient_a Weight for L2 return magnitude.
+ * @param coefficient_e Weight for graph total variation.
  * @param coefficient_b Weight for systemic ratio.
  * @param coefficient_c Weight for Wasserstein distance.
  * @param coefficient_d Weight for total persistence.
@@ -27,10 +29,12 @@
  */
 double compute_strain_index(
     double l2_return_magnitude,
+    double graph_total_variation,
     double systemic_ratio,
     double wasserstein_distance,
     double total_persistence,
     double coefficient_a,
+    double coefficient_e,
     double coefficient_b,
     double coefficient_c,
     double coefficient_d

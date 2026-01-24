@@ -11,8 +11,8 @@ Rolling-window return matrix.
 | Offset | Type | Description |
 |--------|------|-------------|
 | 0 | uint32 | `number_of_assets` (N) |
-| 4 | uint32 | `rolling_window_length` (m) |
-| 8 | double[m * N] | Return matrix, row-major |
+| 4 | uint32 | `rolling_window_length` (m, number of return rows) |
+| 8 | double[m * N] | Return matrix (m return rows), row-major |
 
 **Total size**: 8 + (m * N * 8) bytes
 

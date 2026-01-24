@@ -13,16 +13,26 @@
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| `diffusion_eta` | TBD | Tune so historical avg smoothness ≈ 0.7 |
+| `diffusion_eta` | 0.00536848 | Tune so historical avg smoothness ≈ 0.7 |
 
 ## Strain Index Coefficients
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| `strain_coefficient_a` | TBD | Weight for L2 return magnitude |
-| `strain_coefficient_b` | TBD | Weight for systemic ratio |
-| `strain_coefficient_c` | TBD | Weight for Wasserstein distance |
-| `strain_coefficient_d` | TBD | Weight for total persistence |
+| `strain_coefficient_a` | 6.079022235067595 | Weight for L2 return magnitude |
+| `strain_coefficient_b` | 7.9605896202281174 | Weight for systemic ratio |
+| `strain_coefficient_c` | 1.1954996222800531 | Weight for Wasserstein distance |
+| `strain_coefficient_d` | 0.1774031090998265 | Weight for total persistence |
+| `strain_coefficient_e` | 0.0733645898241489 | Weight for graph total variation |
+
+## Historical Strain Index Stats
+
+Computed from `out/daily/date=*/strain.json`
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `strain_index_mean` | 14.998030683897552 | Mean of daily `strain_index` |
+| `strain_index_std_pop` | 3.134706030763302 | Population standard deviation of daily `strain_index` |
 
 ## Invariants
 
