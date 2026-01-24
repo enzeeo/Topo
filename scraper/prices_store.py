@@ -101,29 +101,21 @@ def write_prices_parquet(
     """
     parquet_file_path = price_store_dir / "prices.parquet"
     
+    # If no new rows, do not claim any dates were written.
     if df.empty:
-        if parquet_file_path.exists():
-            existing_dataframe = pd.read_parquet(parquet_file_path)
-            unique_dates = sorted(existing_dataframe["date"].unique().tolist())
-        else:
-            unique_dates = []
+        return []
+
+    # Dates represented by the incoming dataframe (these are the "written" dates).
+    incoming_dates = sorted(pd.to_datetime(df["date"]).dt.date.unique().tolist())
+
+    if parquet_file_path.exists():
+        existing_dataframe = pd.read_parquet(parquet_file_path)
+        combined_dataframe = pd.concat([existing_dataframe, df], ignore_index=True)
+        combined_dataframe = combined_dataframe.drop_duplicates(subset=["date", "ticker"], keep="last")
     else:
-        if parquet_file_path.exists():
-            existing_dataframe = pd.read_parquet(parquet_file_path)
-            combined_dataframe = pd.concat([existing_dataframe, df], ignore_index=True)
-            combined_dataframe = combined_dataframe.drop_duplicates(subset=["date", "ticker"], keep="last")
-        else:
-            combined_dataframe = df.copy()
-        
-        combined_dataframe = combined_dataframe.sort_values(by=["date", "ticker"])
-        combined_dataframe.to_parquet(parquet_file_path, index=False, engine="pyarrow")
-        
-        unique_dates = sorted(combined_dataframe["date"].unique().tolist())
-    
-    if len(unique_dates) > 0:
-        if isinstance(unique_dates[0], pd.Timestamp):
-            unique_dates = [single_date.date() if isinstance(single_date, pd.Timestamp) else single_date for single_date in unique_dates]
-        elif hasattr(unique_dates[0], 'date'):
-            unique_dates = [single_date.date() for single_date in unique_dates]
-    
-    return unique_dates
+        combined_dataframe = df.copy()
+
+    combined_dataframe = combined_dataframe.sort_values(by=["date", "ticker"])
+    combined_dataframe.to_parquet(parquet_file_path, index=False, engine="pyarrow")
+
+    return incoming_dates

@@ -7,6 +7,37 @@ from pathlib import Path
 import pandas as pd
 
 
+def select_rolling_window_ending_on_or_before(
+    df: pd.DataFrame,
+    window_length: int,
+    end_date: pd.Timestamp,
+) -> pd.DataFrame:
+    """
+    Select the last `window_length` trading days ending on or before `end_date`.
+
+    Args:
+        df: Long-form DataFrame with columns [date, ticker, close].
+        window_length: Number of trading days (price rows) to include.
+        end_date: Inclusive end date (trading day) for the window.
+
+    Returns:
+        Filtered DataFrame covering the window dates only.
+    """
+    date_column = pd.to_datetime(df["date"])
+    end_date_ts = pd.to_datetime(end_date)
+
+    df_upto = df[date_column <= end_date_ts].copy()
+    if df_upto.empty:
+        return df_upto
+
+    unique_dates = sorted(pd.to_datetime(df_upto["date"]).unique())
+    if len(unique_dates) <= window_length:
+        return df_upto
+
+    cutoff_date = unique_dates[-window_length]
+    return df_upto[pd.to_datetime(df_upto["date"]) >= cutoff_date]
+
+
 def select_last_rolling_window_trading_days(
     df: pd.DataFrame,
     window_length: int,
@@ -66,3 +97,53 @@ def write_prices_window_parquet(
     """
     output_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(output_path, index=True, engine="pyarrow")
+
+
+def write_prices_window_parquets_for_dates(
+    all_prices_long: pd.DataFrame,
+    window_length: int,
+    target_dates: list[pd.Timestamp],
+    compute_inputs_dir: Path,
+) -> list[Path]:
+    """
+    Materialize one compute-input parquet per trading date:
+      compute_inputs/prices_window_YYYY-MM-DD.parquet
+
+    Also writes/overwrites compute_inputs/prices_window.parquet as the latest window.
+
+    Args:
+        all_prices_long: Long-form DataFrame with [date, ticker, close] (entire warehouse).
+        window_length: Number of trading days (price rows) in each window (e.g., 51).
+        target_dates: Trading dates to materialize windows for.
+        compute_inputs_dir: Directory to write compute inputs.
+
+    Returns:
+        List of paths written (dated windows, plus the latest alias).
+    """
+    if not target_dates:
+        return []
+
+    compute_inputs_dir.mkdir(parents=True, exist_ok=True)
+
+    written: list[Path] = []
+    sorted_dates = sorted(pd.to_datetime(target_dates))
+    latest_date = sorted_dates[-1]
+
+    for dt in sorted_dates:
+        window_long = select_rolling_window_ending_on_or_before(all_prices_long, window_length, dt)
+        wide = pivot_long_to_wide_matrix(window_long)
+
+        date_string = pd.to_datetime(dt).date().isoformat()
+        dated_path = compute_inputs_dir / f"prices_window_{date_string}.parquet"
+        write_prices_window_parquet(wide, dated_path)
+        written.append(dated_path)
+
+    # Convenience alias for workflows / single-run compute.
+    latest_string = pd.to_datetime(latest_date).date().isoformat()
+    latest_alias = compute_inputs_dir / "prices_window.parquet"
+    latest_dated = compute_inputs_dir / f"prices_window_{latest_string}.parquet"
+    # Re-write alias from the already-materialized latest window.
+    latest_alias.write_bytes(latest_dated.read_bytes())
+    written.append(latest_alias)
+
+    return written

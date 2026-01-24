@@ -13,6 +13,7 @@ from .compute_input_materializer import (
     pivot_long_to_wide_matrix,
     select_last_rolling_window_trading_days,
     write_prices_window_parquet,
+    write_prices_window_parquets_for_dates,
 )
 from .config import ScraperConfig, ScraperResult
 from .prices_store import (
@@ -161,13 +162,27 @@ def run_daily_ingest(config: ScraperConfig, run_date: date) -> ScraperResult:
     prices_parquet_path = config.price_store_dir / "prices.parquet"
     if prices_parquet_path.exists():
         all_prices_dataframe = pd.read_parquet(prices_parquet_path)
-        window_dataframe = select_last_rolling_window_trading_days(
-            all_prices_dataframe, 50
-        )
-        wide_dataframe = pivot_long_to_wide_matrix(window_dataframe)
-        
-        compute_input_path = config.price_store_dir.parent / "compute_inputs" / "prices_window.parquet"
-        write_prices_window_parquet(wide_dataframe, compute_input_path)
+        # Materialize compute inputs only for trading dates (dates present in the warehouse).
+        # Use 51 trading-day price rows so C++ can compute 50 return rows.
+        compute_inputs_dir = config.price_store_dir.parent / "compute_inputs"
+
+        target_dates = []
+        if normalized_dataframe is not None and not normalized_dataframe.empty:
+            # Only generate dated windows for trading dates we actually fetched/wrote.
+            target_dates = sorted(pd.to_datetime(coerced_dataframe["date"]).unique().tolist())
+
+        if target_dates:
+            written_paths = write_prices_window_parquets_for_dates(
+                all_prices_long=all_prices_dataframe,
+                window_length=51,
+                target_dates=target_dates,
+                compute_inputs_dir=compute_inputs_dir,
+            )
+            print(f"Materialized {len(written_paths)} compute input files under {compute_inputs_dir}")
+        else:
+            # No new trading day added (weekend/holiday/manual run). Do not mint a new dated file.
+            # We still keep the existing compute input as-is.
+            pass
     
     notes_list = []
     if len(missing_tickers) > 0:
@@ -183,8 +198,7 @@ def run_daily_ingest(config: ScraperConfig, run_date: date) -> ScraperResult:
         notes=notes_list,
     )
     
-    # Only write QC report if new data was actually fetched and written
-    # Skip writing on weekends when no new data is available (just use existing Friday data)
+    # Only write QC report if new trading-day rows were fetched and written.
     if len(dates_written) > 0:
         write_qc_report_json(qc_report, config.qc_out_dir)
         print(f"QC report written for {run_date} (new data: {len(dates_written)} dates)")
