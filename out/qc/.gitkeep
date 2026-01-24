@@ -1,0 +1,2 @@
+# QC reports are stored here in date-partitioned directories
+# Structure: out/qc/date=YYYY-MM-DD/qc.json

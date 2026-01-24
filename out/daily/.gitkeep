@@ -1,0 +1,6 @@
+# Daily strain outputs are stored here in date-partitioned directories
+# Structure: out/daily/date=YYYY-MM-DD/
+#   - strain.json
+#   - returns.bin
+#   - corr.bin
+#   - diagram.bin

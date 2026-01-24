@@ -108,3 +108,25 @@ dmypy.json
 # OS files
 .DS_Store
 Thumbs.db
+
+# =========================
+# Project-Specific Ignore
+# =========================
+
+# C++ build directory
+cpp/build/
+
+# Parquet data files (generated, large)
+data/prices/*.parquet
+data/compute_inputs/*.parquet
+
+# Binary artifacts (generated)
+out/daily/**/returns.bin
+out/daily/**/corr.bin
+out/daily/**/diagram.bin
+
+# Keep directory structure
+!data/prices/.gitkeep
+!data/compute_inputs/.gitkeep
+!out/qc/.gitkeep
+!out/daily/.gitkeep

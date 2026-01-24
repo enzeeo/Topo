@@ -1,0 +1,3 @@
+# This directory stores prices_window.parquet
+# The file is materialized by Python for C++ consumption
+# Shape: [rolling_window_length x number_of_assets]

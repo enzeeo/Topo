@@ -1,0 +1,56 @@
+name: Python Ingest
+
+on:
+  schedule:
+    # Run daily at 6:00 PM EST (after market close)
+    - cron: '0 23 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      run_date:
+        description: 'Override run date (YYYY-MM-DD)'
+        required: false
+        type: string
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run daily ingestion
+        env:
+          RUN_DATE: ${{ github.event.inputs.run_date || '' }}
+        run: |
+          python -m scraper
+
+      - name: Upload QC report
+        uses: actions/upload-artifact@v4
+        with:
+          name: qc-report
+          path: out/qc/
+
+      - name: Upload compute input
+        uses: actions/upload-artifact@v4
+        with:
+          name: compute-input
+          path: data/compute_inputs/prices_window.parquet
+
+      - name: Commit updated data
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/prices/ data/compute_inputs/ out/qc/
+          git diff --staged --quiet || git commit -m "Daily ingest: $(date +%Y-%m-%d)"
+          git push
