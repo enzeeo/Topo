@@ -26,17 +26,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             cmake \
+            ninja-build \
+            pkg-config \
             libeigen3-dev \
+            libarrow-dev \
             libparquet-dev \
-            libarrow-dev
+            libthrift-dev \
+            thrift-compiler
 
       - name: Build C++ project
         run: |
-          cd cpp
-          mkdir -p build
-          cd build
-          cmake ..
-          make -j$(nproc)
+          cmake -S cpp -B cpp/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build cpp/build
 
       - name: Run daily computation
         env:

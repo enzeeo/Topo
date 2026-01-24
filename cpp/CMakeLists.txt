@@ -15,8 +15,8 @@ find_package(Eigen3 REQUIRED)
 find_package(Arrow REQUIRED)
 find_package(Parquet REQUIRED)
 
-# OpenMP (optional parallelization)
-find_package(OpenMP)
+# OpenMP (optional parallelization - not required)
+find_package(OpenMP QUIET)
 
 # -----------------------------------------------------------------------------
 # Library: msi_core
@@ -44,6 +44,9 @@ target_link_libraries(msi_core PUBLIC
 
 if(OpenMP_CXX_FOUND)
     target_link_libraries(msi_core PUBLIC OpenMP::OpenMP_CXX)
+    message(STATUS "OpenMP found - parallel optimizations enabled")
+else()
+    message(STATUS "OpenMP not found - building without parallelization (this is OK)")
 endif()
 
 # -----------------------------------------------------------------------------
@@ -53,6 +56,22 @@ endif()
 add_executable(daily_run apps/daily_run.cpp)
 
 target_link_libraries(daily_run PRIVATE msi_core)
+
+# -----------------------------------------------------------------------------
+# Test Executables
+# -----------------------------------------------------------------------------
+
+# Test 1: io_parquet
+add_executable(test_io_parquet apps/test_io_parquet.cpp)
+target_link_libraries(test_io_parquet PRIVATE msi_core)
+
+# Test 2: returns
+add_executable(test_returns apps/test_returns.cpp)
+target_link_libraries(test_returns PRIVATE msi_core)
+
+# Test 3: correlation
+add_executable(test_correlation apps/test_correlation.cpp)
+target_link_libraries(test_correlation PRIVATE msi_core)
 
 # -----------------------------------------------------------------------------
 # Install
