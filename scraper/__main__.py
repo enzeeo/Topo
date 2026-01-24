@@ -183,7 +183,13 @@ def run_daily_ingest(config: ScraperConfig, run_date: date) -> ScraperResult:
         notes=notes_list,
     )
     
-    write_qc_report_json(qc_report, config.qc_out_dir)
+    # Only write QC report if new data was actually fetched and written
+    # Skip writing on weekends when no new data is available (just use existing Friday data)
+    if len(dates_written) > 0:
+        write_qc_report_json(qc_report, config.qc_out_dir)
+        print(f"QC report written for {run_date} (new data: {len(dates_written)} dates)")
+    else:
+        print(f"No new data fetched for {run_date}. Using existing data. Skipping QC report creation.")
     
     run_ok = len(missing_tickers) == 0 and bad_value_count == 0
     
