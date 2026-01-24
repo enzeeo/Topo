@@ -104,12 +104,17 @@ def run_daily_ingest(config: ScraperConfig, run_date: date) -> ScraperResult:
         coerced_dataframe = coerce_price_types(cleaned_dataframe)
         dates_written = write_prices_parquet(coerced_dataframe, config.price_store_dir)
         
-        missing_tickers = find_missing_tickers_for_date(
-            coerced_dataframe, universe.tickers, run_date
-        )
-        
-        print(f"Fetched data for {len(coerced_dataframe)} rows across {len(fetched_dates)} dates")
-        print(f"Missing {len(missing_tickers)} tickers for run_date {run_date}")
+        if len(fetched_dates) > 0:
+            most_recent_fetched_date = max(fetched_dates)
+            missing_tickers = find_missing_tickers_for_date(
+                coerced_dataframe, universe.tickers, most_recent_fetched_date
+            )
+            print(f"Fetched data for {len(coerced_dataframe)} rows across {len(fetched_dates)} dates")
+            print(f"Checking missing tickers for most recent date: {most_recent_fetched_date}")
+            print(f"Missing {len(missing_tickers)} tickers for {most_recent_fetched_date}")
+        else:
+            missing_tickers = []
+            print(f"Fetched data for {len(coerced_dataframe)} rows but no dates found")
     else:
         dates_written = []
         duplicate_count = 0
@@ -119,10 +124,18 @@ def run_daily_ingest(config: ScraperConfig, run_date: date) -> ScraperResult:
         if prices_parquet_path.exists():
             existing_dataframe = pd.read_parquet(prices_parquet_path)
             if not existing_dataframe.empty:
-                missing_tickers = find_missing_tickers_for_date(
-                    existing_dataframe, universe.tickers, run_date
-                )
-                print(f"No new data fetched. Checked existing data: {len(existing_dataframe)} rows, {len(missing_tickers)} tickers missing for {run_date}")
+                existing_dates = sorted(existing_dataframe["date"].unique())
+                if len(existing_dates) > 0:
+                    most_recent_existing_date = existing_dates[-1]
+                    if isinstance(most_recent_existing_date, pd.Timestamp):
+                        most_recent_existing_date = most_recent_existing_date.date()
+                    missing_tickers = find_missing_tickers_for_date(
+                        existing_dataframe, universe.tickers, most_recent_existing_date
+                    )
+                    print(f"No new data fetched. Checked existing data: {len(existing_dataframe)} rows, {len(missing_tickers)} tickers missing for {most_recent_existing_date}")
+                else:
+                    missing_tickers = universe.tickers
+                    print(f"Warning: Existing parquet has no dates. All {len(universe.tickers)} tickers marked as missing.")
             else:
                 missing_tickers = universe.tickers
                 print(f"Warning: No data in existing parquet. All {len(universe.tickers)} tickers marked as missing.")
