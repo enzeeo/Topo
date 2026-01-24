@@ -106,12 +106,27 @@ def run_daily_ingest(config: ScraperConfig, run_date: date) -> ScraperResult:
         
         if len(fetched_dates) > 0:
             most_recent_fetched_date = max(fetched_dates)
+            
+            # Merge with existing data to check for tickers that might have historical data
+            prices_parquet_path = config.price_store_dir / "prices.parquet"
+            if prices_parquet_path.exists():
+                existing_dataframe = pd.read_parquet(prices_parquet_path)
+                if not existing_dataframe.empty:
+                    combined_for_check = pd.concat([existing_dataframe, coerced_dataframe], ignore_index=True)
+                    combined_for_check = combined_for_check.drop_duplicates(subset=["date", "ticker"], keep="last")
+                else:
+                    combined_for_check = coerced_dataframe
+            else:
+                combined_for_check = coerced_dataframe
+            
             missing_tickers = find_missing_tickers_for_date(
-                coerced_dataframe, universe.tickers, most_recent_fetched_date
+                combined_for_check, universe.tickers, most_recent_fetched_date
             )
             print(f"Fetched data for {len(coerced_dataframe)} rows across {len(fetched_dates)} dates")
             print(f"Checking missing tickers for most recent date: {most_recent_fetched_date}")
             print(f"Missing {len(missing_tickers)} tickers for {most_recent_fetched_date}")
+            if len(missing_tickers) > 0 and len(missing_tickers) <= 10:
+                print(f"Missing tickers: {missing_tickers}")
         else:
             missing_tickers = []
             print(f"Fetched data for {len(coerced_dataframe)} rows but no dates found")

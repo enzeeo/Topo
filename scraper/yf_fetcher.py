@@ -63,8 +63,12 @@ def fetch_prices_batched_yfinance(
     """
     raw_responses = []
     for batch in ticker_batches:
-        batch_response = fetch_prices_yfinance(batch, start, end)
-        raw_responses.append(batch_response)
+        try:
+            batch_response = fetch_prices_yfinance(batch, start, end)
+            raw_responses.append(batch_response)
+        except Exception as e:
+            print(f"Warning: Failed to fetch batch {batch}: {type(e).__name__}: {e}")
+            raw_responses.append(pd.DataFrame())
     return raw_responses
 
 
