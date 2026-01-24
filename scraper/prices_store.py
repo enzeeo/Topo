@@ -2,7 +2,7 @@
 Functions for reading and writing the Parquet price store.
 """
 
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import List, Optional
 
@@ -18,7 +18,10 @@ def ensure_directories(config: ScraperConfig) -> None:
     Args:
         config: Ingest configuration.
     """
-    raise NotImplementedError
+    config.price_store_dir.mkdir(parents=True, exist_ok=True)
+    config.qc_out_dir.mkdir(parents=True, exist_ok=True)
+    compute_inputs_dir = config.price_store_dir.parent / "compute_inputs"
+    compute_inputs_dir.mkdir(parents=True, exist_ok=True)
 
 
 def get_last_stored_date(price_store_dir: Path) -> Optional[date]:
@@ -31,7 +34,24 @@ def get_last_stored_date(price_store_dir: Path) -> Optional[date]:
     Returns:
         Most recent date found, or None if store is empty.
     """
-    raise NotImplementedError
+    parquet_file_path = price_store_dir / "prices.parquet"
+    
+    if not parquet_file_path.exists():
+        return None
+    
+    stored_dataframe = pd.read_parquet(parquet_file_path)
+    
+    if stored_dataframe.empty:
+        return None
+    
+    date_column = stored_dataframe["date"]
+    if isinstance(date_column.iloc[0], pd.Timestamp):
+        date_column = pd.to_datetime(date_column).dt.date
+    max_date = date_column.max()
+    
+    if isinstance(max_date, pd.Timestamp):
+        return max_date.date()
+    return max_date
 
 
 def compute_missing_dates(
@@ -50,7 +70,19 @@ def compute_missing_dates(
     Returns:
         List of dates to fetch (may be empty).
     """
-    raise NotImplementedError
+    if last_stored is None:
+        start_date = today - timedelta(days=lookback_buffer_days + 30)
+    else:
+        start_date = last_stored + timedelta(days=1)
+    
+    end_date = today + timedelta(days=1)
+    
+    if start_date >= end_date:
+        return []
+    
+    date_range = pd.date_range(start=start_date, end=end_date, freq="D")
+    date_list = [single_date.date() for single_date in date_range]
+    return date_list
 
 
 def write_prices_parquet(
@@ -67,4 +99,31 @@ def write_prices_parquet(
     Returns:
         List of dates successfully written.
     """
-    raise NotImplementedError
+    parquet_file_path = price_store_dir / "prices.parquet"
+    
+    if df.empty:
+        if parquet_file_path.exists():
+            existing_dataframe = pd.read_parquet(parquet_file_path)
+            unique_dates = sorted(existing_dataframe["date"].unique().tolist())
+        else:
+            unique_dates = []
+    else:
+        if parquet_file_path.exists():
+            existing_dataframe = pd.read_parquet(parquet_file_path)
+            combined_dataframe = pd.concat([existing_dataframe, df], ignore_index=True)
+            combined_dataframe = combined_dataframe.drop_duplicates(subset=["date", "ticker"], keep="last")
+        else:
+            combined_dataframe = df.copy()
+        
+        combined_dataframe = combined_dataframe.sort_values(by=["date", "ticker"])
+        combined_dataframe.to_parquet(parquet_file_path, index=False, engine="pyarrow")
+        
+        unique_dates = sorted(combined_dataframe["date"].unique().tolist())
+    
+    if len(unique_dates) > 0:
+        if isinstance(unique_dates[0], pd.Timestamp):
+            unique_dates = [single_date.date() if isinstance(single_date, pd.Timestamp) else single_date for single_date in unique_dates]
+        elif hasattr(unique_dates[0], 'date'):
+            unique_dates = [single_date.date() for single_date in unique_dates]
+    
+    return unique_dates
