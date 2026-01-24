@@ -36,7 +36,7 @@ Vector diffuse_returns(
  *   Quantify dominance of systemic vs idiosyncratic movements.
  *
  * Formula:
- *   Sys(t) = ||s_t||_2 / ||r_t||_2
+ *   Sys(t) = ||s_t||^2 / ||r_t||^2
  *
  * @param smoothed_return Smoothed return vector s_t [N].
  * @param latest_return Latest return vector r_t [N].

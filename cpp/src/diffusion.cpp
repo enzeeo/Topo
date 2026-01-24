@@ -141,13 +141,11 @@ double compute_systemic_ratio(
         latest_sum_squares += latest_value * latest_value;
     }
 
-    const double smoothed_norm = std::sqrt(smoothed_sum_squares);
-    const double latest_norm = std::sqrt(latest_sum_squares);
-
-    if (latest_norm == 0.0) {
+    if (latest_sum_squares == 0.0) {
         // If returns are all zero, define ratio as 0.0 to avoid division by zero.
         return 0.0;
     }
 
-    return smoothed_norm / latest_norm;
+    // Sys(t) = ||s_t||^2 / ||r_t||^2
+    return smoothed_sum_squares / latest_sum_squares;
 }

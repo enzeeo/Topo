@@ -59,6 +59,14 @@ add_executable(daily_run apps/daily_run.cpp)
 target_link_libraries(daily_run PRIVATE msi_core)
 
 # -----------------------------------------------------------------------------
+# Executable: tune_eta
+# -----------------------------------------------------------------------------
+
+add_executable(tune_eta apps/tune_eta.cpp)
+
+target_link_libraries(tune_eta PRIVATE msi_core)
+
+# -----------------------------------------------------------------------------
 # Test Executables
 # -----------------------------------------------------------------------------
 

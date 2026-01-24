@@ -1,6 +1,7 @@
 #include "io_parquet.hpp"
 
 #include <arrow/api.h>
+#include <arrow/compute/api.h>
 #include <arrow/io/api.h>
 #include <parquet/arrow/reader.h>
 
@@ -70,19 +71,41 @@ Matrix read_close_prices_parquet(
     for (int output_col_idx = 0; output_col_idx < number_of_columns; ++output_col_idx) {
         int source_col_idx = price_column_indices[output_col_idx];
         std::shared_ptr<arrow::ChunkedArray> chunked_column = table->column(source_col_idx);
-        
         int64_t row_offset = 0;
+        const std::string column_name = table->field(source_col_idx)->name();
         for (int chunk_index = 0; chunk_index < chunked_column->num_chunks(); ++chunk_index) {
             std::shared_ptr<arrow::Array> chunk = chunked_column->chunk(chunk_index);
-            auto double_array = std::static_pointer_cast<arrow::DoubleArray>(chunk);
-            
-            for (int64_t row_in_chunk = 0; row_in_chunk < chunk->length(); ++row_in_chunk) {
-                int64_t global_row = row_offset + row_in_chunk;
-                // Row-major indexing: row * num_columns + column
-                size_t matrix_index = global_row * number_of_columns + output_col_idx;
+
+            std::shared_ptr<arrow::Array> float64_array = chunk;
+            if (chunk->type_id() != arrow::Type::DOUBLE) {
+                auto cast_result = arrow::compute::Cast(chunk, arrow::float64());
+                if (!cast_result.status().ok()) {
+                    throw std::runtime_error("Failed to cast parquet column to float64");
+                }
+                float64_array = cast_result->make_array();
+            }
+
+            auto double_array = std::static_pointer_cast<arrow::DoubleArray>(float64_array);
+            for (int64_t row_in_chunk = 0; row_in_chunk < double_array->length(); ++row_in_chunk) {
+                if (double_array->IsNull(row_in_chunk)) {
+                    const int64_t global_row = row_offset + row_in_chunk;
+                    throw std::runtime_error(
+                        "Parquet contains null price value: file=" + parquet_path +
+                        ", column=" + column_name +
+                        ", row_index=" + std::to_string(global_row)
+                    );
+                }
+                const int64_t global_row = row_offset + row_in_chunk;
+                size_t matrix_index =
+                    static_cast<size_t>(global_row) * static_cast<size_t>(number_of_columns) +
+                    static_cast<size_t>(output_col_idx);
                 closing_prices[matrix_index] = double_array->Value(row_in_chunk);
             }
-            row_offset += chunk->length();
+            row_offset += double_array->length();
+        }
+
+        if (row_offset != number_of_rows) {
+            throw std::runtime_error("Parquet column length mismatch");
         }
     }
 
