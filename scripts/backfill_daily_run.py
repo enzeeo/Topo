@@ -100,6 +100,7 @@ def run_one(
     b: float,
     c: float,
     d: float,
+    e: float,
     extra_args: List[str],
     env: dict,
     dry_run: bool,
@@ -122,6 +123,8 @@ def run_one(
         str(c),
         "--d",
         str(d),
+        "--e",
+        str(e),
     ]
     command.extend(extra_args)
 
@@ -169,6 +172,7 @@ def main() -> None:
     parser.add_argument("--b", type=float, default=1.0)
     parser.add_argument("--c", type=float, default=1.0)
     parser.add_argument("--d", type=float, default=1.0)
+    parser.add_argument("--e", type=float, default=1.0)
 
     parser.add_argument(
         "--extra-arg",
@@ -208,6 +212,7 @@ def main() -> None:
             b=args.b,
             c=args.c,
             d=args.d,
+            e=args.e,
             extra_args=args.extra_arg,
             env=env,
             dry_run=args.dry_run,

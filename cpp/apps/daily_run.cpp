@@ -162,6 +162,19 @@ static double parse_optional_double_arg(int argc, char* argv[], const std::strin
     return default_value;
 }
 
+static double compute_normalized_strain_index(double strain_index, double mean, double std_pop) {
+    if (std::isnan(strain_index) || std::isinf(strain_index)) {
+        throw std::runtime_error("strain_index must be finite for normalization");
+    }
+    if (std::isnan(mean) || std::isinf(mean)) {
+        throw std::runtime_error("strain_mean must be finite");
+    }
+    if (std::isnan(std_pop) || std::isinf(std_pop) || std_pop <= 0.0) {
+        throw std::runtime_error("strain_std_pop must be finite and > 0");
+    }
+    return (strain_index - mean) / std_pop;
+}
+
 static double l2_norm(const Vector& values) {
     double sum_squares = 0.0;
     for (double v : values) {
@@ -185,6 +198,11 @@ int main(int argc, char* argv[]) {
     const double coefficient_b = parse_optional_double_arg(argc, argv, "--b", 1.0);
     const double coefficient_c = parse_optional_double_arg(argc, argv, "--c", 1.0);
     const double coefficient_d = parse_optional_double_arg(argc, argv, "--d", 1.0);
+    const double coefficient_e = parse_optional_double_arg(argc, argv, "--e", 1.0);
+
+    // Normalization parameters (defaults from contracts/params.md for current calibration run)
+    const double strain_mean = parse_optional_double_arg(argc, argv, "--strain-mean", 14.998030683897552);
+    const double strain_std_pop = parse_optional_double_arg(argc, argv, "--strain-std-pop", 3.134706030763302);
 
     const std::string output_dir = join_path(output_root, "date=" + run_date);
     std::filesystem::create_directories(std::filesystem::path(output_dir));
@@ -276,10 +294,12 @@ int main(int argc, char* argv[]) {
     const double l2_return_magnitude = l2_norm(returns.latest_return);
     const double strain_index = compute_strain_index(
         l2_return_magnitude,
+        graph_total_variation,
         systemic_ratio,
         wasserstein_distance,
         total_persistence,
         coefficient_a,
+        coefficient_e,
         coefficient_b,
         coefficient_c,
         coefficient_d
@@ -294,6 +314,11 @@ int main(int argc, char* argv[]) {
     components.total_persistence = total_persistence;
     components.wasserstein_distance = wasserstein_distance;
     components.strain_index = strain_index;
+    components.normalized_strain_index = compute_normalized_strain_index(
+        strain_index,
+        strain_mean,
+        strain_std_pop
+    );
 
     write_strain_json(components, strain_json_path);
 

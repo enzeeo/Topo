@@ -5,5 +5,6 @@
   "systemic_ratio": 0.84890529169659712,
   "total_persistence": 17.034953000000005,
   "wasserstein_distance": 5.1394484657705943,
-  "strain_index": 23.651307423478301
+  "strain_index": 20.430011444855175,
+  "normalized_strain_index": 1.732851727609984
 }

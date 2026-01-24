@@ -7,16 +7,21 @@
 
 double compute_strain_index(
     double l2_return_magnitude,
+    double graph_total_variation,
     double systemic_ratio,
     double wasserstein_distance,
     double total_persistence,
     double coefficient_a,
+    double coefficient_e,
     double coefficient_b,
     double coefficient_c,
     double coefficient_d
 ) {
     if (std::isnan(l2_return_magnitude) || std::isinf(l2_return_magnitude)) {
         throw std::runtime_error("l2_return_magnitude must be finite");
+    }
+    if (std::isnan(graph_total_variation) || std::isinf(graph_total_variation)) {
+        throw std::runtime_error("graph_total_variation must be finite");
     }
     if (std::isnan(systemic_ratio) || std::isinf(systemic_ratio)) {
         throw std::runtime_error("systemic_ratio must be finite");
@@ -31,6 +36,9 @@ double compute_strain_index(
     if (l2_return_magnitude < 0.0) {
         throw std::runtime_error("l2_return_magnitude must be >= 0");
     }
+    if (graph_total_variation < 0.0) {
+        throw std::runtime_error("graph_total_variation must be >= 0");
+    }
     if (wasserstein_distance < 0.0) {
         throw std::runtime_error("wasserstein_distance must be >= 0");
     }
@@ -40,6 +48,7 @@ double compute_strain_index(
 
     const double strain_index =
         coefficient_a * l2_return_magnitude +
+        coefficient_e * graph_total_variation +
         coefficient_b * systemic_ratio +
         coefficient_c * wasserstein_distance +
         coefficient_d * total_persistence;
@@ -69,7 +78,8 @@ void write_strain_json(
     output_file << "  \"systemic_ratio\": " << result.systemic_ratio << ",\n";
     output_file << "  \"total_persistence\": " << result.total_persistence << ",\n";
     output_file << "  \"wasserstein_distance\": " << result.wasserstein_distance << ",\n";
-    output_file << "  \"strain_index\": " << result.strain_index << "\n";
+    output_file << "  \"strain_index\": " << result.strain_index << ",\n";
+    output_file << "  \"normalized_strain_index\": " << result.normalized_strain_index << "\n";
     output_file << "}\n";
 
     if (!output_file.good()) {

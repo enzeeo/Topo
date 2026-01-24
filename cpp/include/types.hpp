@@ -68,4 +68,5 @@ struct StrainComponents {
     double total_persistence;      ///< Sum of lifetimes from H1 diagram
     double wasserstein_distance;   ///< Distance to previous diagram
     double strain_index;           ///< Final combined strain index
+    double normalized_strain_index;///< (strain_index - mean) / std_pop
 };
