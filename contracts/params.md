@@ -19,10 +19,10 @@
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| `strain_coefficient_a` | TBD | Weight for L2 return magnitude |
-| `strain_coefficient_b` | TBD | Weight for systemic ratio |
-| `strain_coefficient_c` | TBD | Weight for Wasserstein distance |
-| `strain_coefficient_d` | TBD | Weight for total persistence |
+| `strain_coefficient_a` | 0.84 | Weight for L2 return magnitude |
+| `strain_coefficient_b` | 0.53 | Weight for systemic ratio |
+| `strain_coefficient_c` | 0.31 | Weight for Wasserstein distance |
+| `strain_coefficient_d` | 0.19 | Weight for total persistence |
 
 ## Invariants
 

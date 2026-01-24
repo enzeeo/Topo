@@ -34,6 +34,7 @@ add_library(msi_core STATIC
 
 target_include_directories(msi_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/hera/include
 )
 
 target_link_libraries(msi_core PUBLIC
@@ -80,6 +81,10 @@ target_link_libraries(test_graph PRIVATE msi_core)
 # Test 5: diffusion
 add_executable(test_diffusion apps/test_diffusion.cpp)
 target_link_libraries(test_diffusion PRIVATE msi_core)
+
+# Test 6: topology
+add_executable(test_topology apps/test_topology.cpp)
+target_link_libraries(test_topology PRIVATE msi_core)
 
 # -----------------------------------------------------------------------------
 # Install

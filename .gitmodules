@@ -1,0 +1,6 @@
+[submodule "cpp/third_party/hera"]
+	path = cpp/third_party/hera
+	url = https://github.com/anigmetov/hera
+[submodule "cpp/third_party/ripser"]
+	path = cpp/third_party/ripser
+	url = https://github.com/Ripser/ripser
