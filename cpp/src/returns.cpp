@@ -10,23 +10,26 @@ Returns compute_log_returns(
     uint32_t window_length
 ) {
     // Validate inputs
-    size_t expected_size = static_cast<size_t>(window_length) * number_of_assets;
+    size_t expected_size =
+        static_cast<size_t>(window_length + 1) * static_cast<size_t>(number_of_assets);
     if (closing_prices.size() != expected_size) {
         throw std::runtime_error("closing_prices size mismatch: expected " + 
                                  std::to_string(expected_size) + 
                                  ", got " + std::to_string(closing_prices.size()));
     }
 
-    if (window_length < 2) {
-        throw std::runtime_error("window_length must be at least 2 to compute returns");
+    if (window_length < 1) {
+        throw std::runtime_error("window_length must be at least 1 to compute returns");
     }
 
-    // Number of return days is one less than price days
-    // (we need two prices to compute one return)
-    uint32_t number_of_return_days = window_length - 1;
+    // window_length is the number of return rows.
+    // closing_prices provides (window_length + 1) price rows.
+    uint32_t number_of_return_days = window_length;
 
     // Allocate output matrix: [number_of_return_days x number_of_assets]
-    Matrix window_returns(number_of_return_days * number_of_assets);
+    Matrix window_returns(
+        static_cast<size_t>(number_of_return_days) * static_cast<size_t>(number_of_assets)
+    );
 
     // Compute log returns: r_{t,i} = log(P_{t,i} / P_{t-1,i})
     for (uint32_t day_index = 0; day_index < number_of_return_days; ++day_index) {

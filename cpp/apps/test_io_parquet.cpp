@@ -94,6 +94,17 @@ int main(int argc, char* argv[]) {
         }
         std::cout << std::string(60, '-') << std::endl;
 
+        // Contract check for this project setup:
+        // - prices_window.parquet includes an extra "Date" column, ignored in C++
+        // - number_of_rows should be rolling_window_length + 1 (e.g., 51 when rolling_window_length=50)
+        std::cout << "Contract check:" << std::endl;
+        if (number_of_rows == 51) {
+            std::cout << "  Rows == 51: YES (GOOD)" << std::endl;
+        } else {
+            std::cout << "  Rows == 51: NO (CHECK)" << std::endl;
+        }
+        std::cout << std::string(60, '-') << std::endl;
+
         // Compute summary statistics
         double min_price = *std::min_element(closing_prices.begin(), closing_prices.end());
         double max_price = *std::max_element(closing_prices.begin(), closing_prices.end());

@@ -42,12 +42,16 @@ int main(int argc, char* argv[]) {
 
         // Step 2: Compute returns
         std::cout << "Step 2: Computing returns..." << std::endl;
+        if (number_of_rows < 2) {
+            throw std::runtime_error("Need at least 2 price rows to compute returns");
+        }
+        uint32_t rolling_window_length = number_of_rows - 1;
         Returns returns = compute_log_returns(
             closing_prices,
             number_of_assets,
-            number_of_rows
+            rolling_window_length
         );
-        uint32_t return_days = number_of_rows - 1;
+        uint32_t return_days = rolling_window_length;
         std::cout << "  Returns shape: " << return_days << " x " 
                   << number_of_assets << std::endl;
         std::cout << std::string(60, '-') << std::endl;
@@ -57,7 +61,7 @@ int main(int argc, char* argv[]) {
         Matrix correlation = compute_correlation(
             returns.window_returns,
             number_of_assets,
-            return_days
+            rolling_window_length
         );
         std::cout << "  Correlation matrix shape: " << number_of_assets 
                   << " x " << number_of_assets << std::endl;

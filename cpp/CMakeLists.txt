@@ -73,6 +73,14 @@ target_link_libraries(test_returns PRIVATE msi_core)
 add_executable(test_correlation apps/test_correlation.cpp)
 target_link_libraries(test_correlation PRIVATE msi_core)
 
+# Test 4: graph / laplacian / GTV 
+add_executable(test_graph apps/test_graph.cpp)
+target_link_libraries(test_graph PRIVATE msi_core)
+
+# Test 5: diffusion
+add_executable(test_diffusion apps/test_diffusion.cpp)
+target_link_libraries(test_diffusion PRIVATE msi_core)
+
 # -----------------------------------------------------------------------------
 # Install
 # -----------------------------------------------------------------------------

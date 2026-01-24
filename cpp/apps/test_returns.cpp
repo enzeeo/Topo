@@ -49,13 +49,17 @@ int main(int argc, char* argv[]) {
 
         // Step 2: Compute log returns
         std::cout << "Step 2: Computing log returns..." << std::endl;
+        if (number_of_rows < 2) {
+            throw std::runtime_error("Need at least 2 price rows to compute returns");
+        }
+        uint32_t rolling_window_length = number_of_rows - 1;
         Returns returns = compute_log_returns(
             closing_prices,
             number_of_columns,  // number_of_assets
-            number_of_rows      // window_length
+            rolling_window_length
         );
 
-        uint32_t return_days = number_of_rows - 1;
+        uint32_t return_days = rolling_window_length;
         std::cout << "  Window returns shape: " << return_days << " days x " 
                   << number_of_columns << " assets" << std::endl;
         std::cout << "  Latest return vector: " << returns.latest_return.size() 
@@ -146,7 +150,7 @@ int main(int argc, char* argv[]) {
         save_returns_bin(
             returns.window_returns,
             number_of_columns,
-            return_days,
+            rolling_window_length,
             output_path
         );
         std::cout << "  Saved to: " << output_path << std::endl;

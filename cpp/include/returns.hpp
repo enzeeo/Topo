@@ -12,10 +12,10 @@
  * Formula:
  *   r_{t,i} = log(P_{t,i} / P_{t-1,i})
  *
- * @param closing_prices Dense matrix of closing prices [T x N].
+ * @param closing_prices Dense matrix of closing prices [(m+1) x N].
  * @param number_of_assets Number of assets (N).
- * @param window_length Number of days in the window (m).
- * @return Returns struct containing window_returns [m-1 x N] and latest_return [N].
+ * @param window_length Number of return rows in the window (m).
+ * @return Returns struct containing window_returns [m x N] and latest_return [N].
  *
  * Paper reference: Section 1 (definition of returns)
  */
