@@ -121,9 +121,8 @@ Thumbs.db
 # C++ build directory
 cpp/build/
 
-# Parquet data files (generated, large)
-data/prices/*.parquet
-data/compute_inputs/*.parquet
+# Parquet data files (generated). data/prices/ and data/compute_inputs/ are committed for GitHub.
+# data/compute_inputs/*.parquet
 
 # Binary artifacts (generated)
 out/daily/**/returns.bin
