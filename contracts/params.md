@@ -27,12 +27,12 @@
 
 ## Historical Strain Index Stats
 
-Computed from `out/daily/date=*/strain.json`
+Computed from `out/daily/date=*/strain.json` `strain_index` values (same scale).
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| `strain_index_mean` | 14.998030683897552 | Mean of daily `strain_index` |
-| `strain_index_std_pop` | 3.134706030763302 | Population standard deviation of daily `strain_index` |
+| `strain_index_mean` | 14.988931691254296 | Mean of daily `strain_index` |
+| `strain_index_std_pop` | 3.1382172910274146 | Population standard deviation of daily `strain_index` |
 
 ## Invariants
 
@@ -40,3 +40,4 @@ Computed from `out/daily/date=*/strain.json`
 - Stable ordering for tickers (alphabetical) and dates (ascending)
 - No randomness without fixed seed
 - Identical results across runs
+
