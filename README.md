@@ -28,10 +28,12 @@ Python (scraper/)          →    Parquet    →    C++ (cpp/)
    - Fetch missing prices from yfinance
    - Validate and clean data
    - Write to `data/prices/prices.parquet`
-   - Materialize `data/compute_inputs/prices_window.parquet`
+   - Materialize compute inputs:
+     - `data/compute_inputs/prices_window_YYYY-MM-DD.parquet` (51 price rows)
+     - `data/compute_inputs/prices_window.parquet` as a “latest” alias
 
 2. **C++ Compute** (triggered after ingest)
-   - Read price window parquet
+   - Read dated price window parquet (`prices_window_YYYY-MM-DD.parquet`)
    - Compute log returns → correlation → graph → topology
    - Output `out/daily/date=YYYY-MM-DD/strain.json`
 
@@ -74,8 +76,12 @@ make
 |-----------|-------|-------------|
 | `number_of_assets` | 500 | S&P 500 stocks |
 | `rolling_window_length` | 50 | Trading days |
-| `diffusion_eta` | TBD | Tune for ~0.7 avg smoothness |
-| `strain_coefficients` | TBD | a, b, c, d weights |
+| `diffusion_eta` | `0.00536848` | Tuned so historical avg smoothness ≈ 0.7 |
+| `strain_coefficients (a..e)` | `a=6.0790, b=7.9606, c=1.1955, d=0.1774, e=0.07336` | Tuned weights for strain components |
+
+Notes:
+- The `diffusion_eta` and `strain_coefficients (a..e)` above were tuned using **2022–2023 dates only** (train window). Treat 2024–2025 as out-of-sample evaluation when backtesting.
+- Canonical values live in `contracts/params.md`.
 
 ## Strain Index Formula
 
@@ -111,7 +117,3 @@ All cross-language communication follows strict contracts in `/contracts`:
 - `parquet_schema.md` - Data schemas
 - `artifact_formats.md` - Binary layouts
 - `math_spec.md` - Mathematical formulas
-
-## License
-
-[Add license here]
