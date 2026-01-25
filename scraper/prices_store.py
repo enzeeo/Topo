@@ -97,7 +97,8 @@ def write_prices_parquet(
         price_store_dir: Root parquet directory.
 
     Returns:
-        List of dates successfully written.
+        List of *newly added* trading dates (dates that were not already present in
+        the existing store prior to this write).
     """
     parquet_file_path = price_store_dir / "prices.parquet"
     
@@ -105,8 +106,18 @@ def write_prices_parquet(
     if df.empty:
         return []
 
-    # Dates represented by the incoming dataframe (these are the "written" dates).
+    # Dates represented by the incoming dataframe.
     incoming_dates = sorted(pd.to_datetime(df["date"]).dt.date.unique().tolist())
+
+    # Determine which of those dates are actually new (not already present in the store).
+    existing_dates_set = set()
+    if parquet_file_path.exists():
+        existing_dataframe = pd.read_parquet(parquet_file_path)
+        if not existing_dataframe.empty:
+            existing_dates = pd.to_datetime(existing_dataframe["date"]).dt.date.unique().tolist()
+            existing_dates_set = set(existing_dates)
+
+    newly_added_dates = [d for d in incoming_dates if d not in existing_dates_set]
 
     if parquet_file_path.exists():
         existing_dataframe = pd.read_parquet(parquet_file_path)
@@ -118,4 +129,4 @@ def write_prices_parquet(
     combined_dataframe = combined_dataframe.sort_values(by=["date", "ticker"])
     combined_dataframe.to_parquet(parquet_file_path, index=False, engine="pyarrow")
 
-    return incoming_dates
+    return newly_added_dates

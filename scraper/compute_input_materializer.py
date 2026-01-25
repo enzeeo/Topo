@@ -131,19 +131,26 @@ def write_prices_window_parquets_for_dates(
 
     for dt in sorted_dates:
         window_long = select_rolling_window_ending_on_or_before(all_prices_long, window_length, dt)
+        unique_dates = sorted(pd.to_datetime(window_long["date"]).unique()) if not window_long.empty else []
+        if len(unique_dates) != window_length:
+            # Enforce strict window length so C++ always gets 51 price rows (50 returns).
+            # If there isn't enough history yet for a given date, skip materializing it.
+            continue
+
         wide = pivot_long_to_wide_matrix(window_long)
+        if wide.shape[0] != window_length:
+            continue
 
         date_string = pd.to_datetime(dt).date().isoformat()
         dated_path = compute_inputs_dir / f"prices_window_{date_string}.parquet"
         write_prices_window_parquet(wide, dated_path)
         written.append(dated_path)
 
-    # Convenience alias for workflows / single-run compute.
-    latest_string = pd.to_datetime(latest_date).date().isoformat()
-    latest_alias = compute_inputs_dir / "prices_window.parquet"
-    latest_dated = compute_inputs_dir / f"prices_window_{latest_string}.parquet"
-    # Re-write alias from the already-materialized latest window.
-    latest_alias.write_bytes(latest_dated.read_bytes())
-    written.append(latest_alias)
+    # Convenience alias for workflows / single-run compute (only if we wrote at least one dated file).
+    if written:
+        latest_written_dated = written[-1]
+        latest_alias = compute_inputs_dir / "prices_window.parquet"
+        latest_alias.write_bytes(latest_written_dated.read_bytes())
+        written.append(latest_alias)
 
     return written

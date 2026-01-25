@@ -15,11 +15,15 @@ on:
 jobs:
   check_new_data:
     runs-on: ubuntu-latest
+    outputs:
+      new_data: ${{ steps.ingest.outputs.new_data }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          lfs: true
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - name: Read ingest result
         id: ingest
         run: |
@@ -38,6 +42,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          lfs: true
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Install system dependencies
         run: |
@@ -58,12 +64,37 @@ jobs:
           cmake --build cpp/build
 
       - name: Run daily computation
-        env:
-          RUN_DATE: ${{ github.event.inputs.run_date || '' }}
         run: |
-          ./cpp/build/daily_run \
-            --input data/compute_inputs/prices_window.parquet \
-            --output out/daily/
+          if [ -n "${{ github.event.inputs.run_date || '' }}" ]; then
+            D="${{ github.event.inputs.run_date }}"
+            INPUT="data/compute_inputs/prices_window_${D}.parquet"
+            if [ ! -f "${INPUT}" ]; then
+              echo "Missing compute input: ${INPUT}"
+              exit 1
+            fi
+            ./cpp/build/daily_run --input "${INPUT}" --output out/daily/ --date "${D}"
+            exit 0
+          fi
+
+          if [ ! -f out/ingest_result.json ]; then
+            echo "Missing out/ingest_result.json; cannot determine new dates."
+            exit 1
+          fi
+
+          NEW_DATES="$(jq -r '.new_dates[]?' out/ingest_result.json)"
+          if [ -z "${NEW_DATES}" ]; then
+            echo "No new compute-ready dates. Skipping."
+            exit 0
+          fi
+
+          for D in ${NEW_DATES}; do
+            INPUT="data/compute_inputs/prices_window_${D}.parquet"
+            if [ ! -f "${INPUT}" ]; then
+              echo "Missing compute input: ${INPUT}"
+              exit 1
+            fi
+            ./cpp/build/daily_run --input "${INPUT}" --output out/daily/ --date "${D}"
+          done
 
       - name: Upload strain results
         uses: actions/upload-artifact@v4

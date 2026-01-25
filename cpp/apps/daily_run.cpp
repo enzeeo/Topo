@@ -29,6 +29,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
+#include <regex>
 #include <stdexcept>
 #include <vector>
 
@@ -102,6 +103,16 @@ static std::string decrement_date_string_by_days(const std::string& date_yyyy_mm
     std::tm previous_parts{};
     localtime_r(&previous_time, &previous_parts);
     return format_date_yyyy_mm_dd(previous_parts);
+}
+
+static std::string infer_run_date_from_input_or_empty(const std::string& parquet_input_path) {
+    // Expect: .../prices_window_YYYY-MM-DD.parquet
+    const std::regex re(R"(prices_window_(\d{4}-\d{2}-\d{2})\.parquet$)");
+    std::smatch m;
+    if (std::regex_search(parquet_input_path, m, re) && m.size() == 2) {
+        return m[1].str();
+    }
+    return std::string();
 }
 
 static bool file_exists(const std::string& path) {
@@ -190,7 +201,12 @@ int main(int argc, char* argv[]) {
     std::string run_date = parse_optional_arg(argc, argv, "--date", "");
     if (run_date.empty()) {
         const std::string run_date_env = get_env_or_empty("RUN_DATE");
-        run_date = run_date_env.empty() ? today_new_york_date_string() : run_date_env;
+        if (!run_date_env.empty()) {
+            run_date = run_date_env;
+        } else {
+            const std::string inferred = infer_run_date_from_input_or_empty(parquet_input_path);
+            run_date = inferred.empty() ? today_new_york_date_string() : inferred;
+        }
     }
 
     const double diffusion_eta = parse_optional_double_arg(argc, argv, "--eta", 1.0);
