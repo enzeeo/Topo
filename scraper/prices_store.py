@@ -70,16 +70,21 @@ def compute_missing_dates(
     Returns:
         List of dates to fetch (may be empty).
     """
+    # Always refetch a small lookback window to pick up late corrections / revisions.
+    # - This affects the *fetch* range, but `write_prices_parquet` still returns only truly-new dates.
+    # - yfinance normalizer drops non-trading days naturally (empty days yield no rows).
     if last_stored is None:
         start_date = today - timedelta(days=lookback_buffer_days + 30)
     else:
-        start_date = last_stored + timedelta(days=1)
-    
-    end_date = today + timedelta(days=1)
-    
-    if start_date >= end_date:
-        return []
-    
+        # Include `lookback_buffer_days` calendar days before the last stored date (inclusive).
+        start_date = last_stored - timedelta(days=lookback_buffer_days)
+
+    # Fetch through `today` (inclusive). (Fetcher adds +1 day internally for yfinance end handling.)
+    end_date = today
+
+    if start_date > end_date:
+        start_date = end_date
+
     date_range = pd.date_range(start=start_date, end=end_date, freq="D")
     date_list = [single_date.date() for single_date in date_range]
     return date_list

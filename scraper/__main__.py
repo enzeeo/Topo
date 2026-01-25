@@ -219,7 +219,11 @@ def run_daily_ingest(config: ScraperConfig, run_date: date) -> ScraperResult:
     else:
         print(f"No new data fetched for {run_date}. Using existing data. Skipping QC report creation.")
     
-    run_ok = len(missing_tickers) == 0 and bad_value_count == 0
+    # Treat missing tickers as a QC signal, not a hard failure.
+    # We want scheduled runs (weekends/holidays/no-new-data) to succeed so workflows don't fail noisily.
+    # Hard-fail only on invalid numeric data, or if we *claim* we added new dates but every ticker is missing.
+    all_missing_for_universe = (len(universe.tickers) > 0) and (len(missing_tickers) == len(universe.tickers))
+    run_ok = (bad_value_count == 0) and (not (dates_written and all_missing_for_universe))
     
     result = ScraperResult(
         ok=run_ok,
