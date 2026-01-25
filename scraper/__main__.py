@@ -239,8 +239,8 @@ if __name__ == "__main__":
     import pandas as pd
     from dateutil import tz
     
-    if "RUN_DATE" in os.environ:
-        run_date_string = os.environ["RUN_DATE"]
+    run_date_string = os.environ.get("RUN_DATE", "").strip()
+    if run_date_string:
         run_date = date.fromisoformat(run_date_string)
     else:
         market_timezone = tz.gettz("America/New_York")
