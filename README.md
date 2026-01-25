@@ -127,5 +127,5 @@ import requests
 
 url = "https://raw.githubusercontent.com/enzeeo/Topo/main/out/daily/date=2026-01-23/strain.json"
 data = requests.get(url, timeout=30).json()
-print(data["strain_index"], data["normalized_strain_index"])
+print(data["strain_index"])
 ```
