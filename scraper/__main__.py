@@ -2,6 +2,7 @@
 Entry point for the daily ingestion pipeline.
 """
 
+import json
 import os
 import sys
 from datetime import date
@@ -158,17 +159,28 @@ def run_daily_ingest(config: ScraperConfig, run_date: date) -> ScraperResult:
             missing_tickers = universe.tickers
             print(f"Warning: No data was fetched and no existing parquet found. All {len(universe.tickers)} tickers marked as missing.")
     
-    prices_parquet_path = config.price_store_dir / "prices.parquet"
-    if prices_parquet_path.exists():
-        all_prices_dataframe = pd.read_parquet(prices_parquet_path)
-        window_dataframe = select_last_rolling_window_trading_days(
-            all_prices_dataframe, 50
-        )
-        wide_dataframe = pivot_long_to_wide_matrix(window_dataframe)
-        
-        compute_input_path = config.price_store_dir.parent / "compute_inputs" / "prices_window.parquet"
-        write_prices_window_parquet(wide_dataframe, compute_input_path)
-    
+    # Update compute input only when new prices were written (skip on weekends / no new fetch).
+    if len(dates_written) > 0:
+        prices_parquet_path = config.price_store_dir / "prices.parquet"
+        if prices_parquet_path.exists():
+            all_prices_dataframe = pd.read_parquet(prices_parquet_path)
+            window_dataframe = select_last_rolling_window_trading_days(
+                all_prices_dataframe, 50
+            )
+            wide_dataframe = pivot_long_to_wide_matrix(window_dataframe)
+            compute_input_path = config.price_store_dir.parent / "compute_inputs" / "prices_window.parquet"
+            write_prices_window_parquet(wide_dataframe, compute_input_path)
+
+    # Expose run outcome for GHA: C++ runs only when new_data is true.
+    ingest_result_path = config.qc_out_dir.parent / "ingest_result.json"
+    ingest_result = {
+        "run_date": run_date.isoformat(),
+        "new_data": len(dates_written) > 0,
+    }
+    ingest_result_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(ingest_result_path, "w") as f:
+        json.dump(ingest_result, f, indent=2)
+
     notes_list = []
     if len(missing_tickers) > 0:
         notes_list.append(f"Missing data for {len(missing_tickers)} tickers on {run_date}")
