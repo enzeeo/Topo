@@ -76,7 +76,7 @@ make
 |-----------|-------|-------------|
 | `number_of_assets` | 500 | S&P 500 stocks |
 | `rolling_window_length` | 50 | Trading days |
-| `diffusion_eta` | `0.00245267` | Tuned on 2022–2023 (train window) |
+| `diffusion_eta` | `0.00245267` | Eta |
 | `strain_coefficients (a..e)` | `a=0.00436939, b=0.0501097, c=-0.00153752, d=-0.000197485, e=-0.0000509529` | Tuned on 2022–2023 (train window) |
 
 Notes:
