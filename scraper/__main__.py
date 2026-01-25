@@ -2,6 +2,7 @@
 Entry point for the daily ingestion pipeline.
 """
 
+import json
 import os
 import sys
 from datetime import date
@@ -10,9 +11,6 @@ from pathlib import Path
 import pandas as pd
 
 from .compute_input_materializer import (
-    pivot_long_to_wide_matrix,
-    select_last_rolling_window_trading_days,
-    write_prices_window_parquet,
     write_prices_window_parquets_for_dates,
 )
 from .config import ScraperConfig, ScraperResult
@@ -159,31 +157,34 @@ def run_daily_ingest(config: ScraperConfig, run_date: date) -> ScraperResult:
             missing_tickers = universe.tickers
             print(f"Warning: No data was fetched and no existing parquet found. All {len(universe.tickers)} tickers marked as missing.")
     
-    prices_parquet_path = config.price_store_dir / "prices.parquet"
-    if prices_parquet_path.exists():
-        all_prices_dataframe = pd.read_parquet(prices_parquet_path)
-        # Materialize compute inputs only for trading dates (dates present in the warehouse).
-        # Use 51 trading-day price rows so C++ can compute 50 return rows.
-        compute_inputs_dir = config.price_store_dir.parent / "compute_inputs"
-
-        target_dates = []
-        if normalized_dataframe is not None and not normalized_dataframe.empty:
-            # Only generate dated windows for trading dates we actually fetched/wrote.
+    # Update compute input only when new prices were written (skip on weekends / no new fetch).
+    if len(dates_written) > 0:
+        prices_parquet_path = config.price_store_dir / "prices.parquet"
+        if prices_parquet_path.exists():
+            all_prices_dataframe = pd.read_parquet(prices_parquet_path)
+            # Materialize compute inputs only for trading dates (dates present in the warehouse).
+            # Use 51 trading-day price rows so C++ can compute 50 return rows.
+            compute_inputs_dir = config.price_store_dir.parent / "compute_inputs"
             target_dates = sorted(pd.to_datetime(coerced_dataframe["date"]).unique().tolist())
+            if target_dates:
+                written_paths = write_prices_window_parquets_for_dates(
+                    all_prices_long=all_prices_dataframe,
+                    window_length=51,
+                    target_dates=target_dates,
+                    compute_inputs_dir=compute_inputs_dir,
+                )
+                print(f"Materialized {len(written_paths)} compute input files under {compute_inputs_dir}")
 
-        if target_dates:
-            written_paths = write_prices_window_parquets_for_dates(
-                all_prices_long=all_prices_dataframe,
-                window_length=51,
-                target_dates=target_dates,
-                compute_inputs_dir=compute_inputs_dir,
-            )
-            print(f"Materialized {len(written_paths)} compute input files under {compute_inputs_dir}")
-        else:
-            # No new trading day added (weekend/holiday/manual run). Do not mint a new dated file.
-            # We still keep the existing compute input as-is.
-            pass
-    
+    # Expose run outcome for GHA: C++ runs only when new_data is true.
+    ingest_result_path = config.qc_out_dir.parent / "ingest_result.json"
+    ingest_result = {
+        "run_date": run_date.isoformat(),
+        "new_data": len(dates_written) > 0,
+    }
+    ingest_result_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(ingest_result_path, "w") as f:
+        json.dump(ingest_result, f, indent=2)
+
     notes_list = []
     if len(missing_tickers) > 0:
         notes_list.append(f"Missing data for {len(missing_tickers)} tickers on {run_date}")

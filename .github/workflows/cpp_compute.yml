@@ -13,10 +13,26 @@ on:
         type: string
 
 jobs:
+  check_new_data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Read ingest result
+        id: ingest
+        run: |
+          if [ -f out/ingest_result.json ]; then
+            echo "new_data=$(jq -r .new_data out/ingest_result.json)" >> $GITHUB_OUTPUT
+          else
+            echo "new_data=false" >> $GITHUB_OUTPUT
+          fi
+
   compute:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
-
+    needs: check_new_data
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && needs.check_new_data.outputs.new_data == 'true') }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

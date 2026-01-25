@@ -2,7 +2,7 @@ name: Python Ingest
 
 on:
   schedule:
-    # Run daily at 6:00 PM EST (after market close)
+    # Mon–Fri 23:00 UTC ≈ 6 PM New York (EST); EDT would be 22:00 UTC
     - cron: '0 23 * * 1-5'
   workflow_dispatch:
     inputs:
@@ -30,27 +30,38 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run daily ingestion
+        id: ingest
         env:
           RUN_DATE: ${{ github.event.inputs.run_date || '' }}
         run: |
           python -m scraper
 
+      - name: Read ingest result
+        id: ingest_result
+        run: |
+          echo "new_data=$(jq -r .new_data out/ingest_result.json)" >> $GITHUB_OUTPUT
+
       - name: Upload QC report
+        if: steps.ingest_result.outputs.new_data == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: qc-report
           path: out/qc/
 
       - name: Upload compute input
+        if: steps.ingest_result.outputs.new_data == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: compute-input
-          path: data/compute_inputs/prices_window.parquet
+          path: data/compute_inputs/
 
       - name: Commit updated data
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add data/prices/ data/compute_inputs/ out/qc/
+          git add out/ingest_result.json
+          if [ "${{ steps.ingest_result.outputs.new_data }}" = "true" ]; then
+            git add data/prices/ data/compute_inputs/ out/qc/
+          fi
           git diff --staged --quiet || git commit -m "Daily ingest: $(date +%Y-%m-%d)"
           git push
