@@ -76,8 +76,8 @@ make
 |-----------|-------|-------------|
 | `number_of_assets` | 500 | S&P 500 stocks |
 | `rolling_window_length` | 50 | Trading days |
-| `diffusion_eta` | `0.00536848` | Tuned so historical avg smoothness ≈ 0.7 |
-| `strain_coefficients (a..e)` | `a=6.0790, b=7.9606, c=1.1955, d=0.1774, e=0.07336` | Tuned weights for strain components |
+| `diffusion_eta` | `0.00245267` | Tuned on 2022–2023 (train window) |
+| `strain_coefficients (a..e)` | `a=0.00436939, b=0.0501097, c=-0.00153752, d=-0.000197485, e=-0.0000509529` | Tuned on 2022–2023 (train window) |
 
 Notes:
 - The `diffusion_eta` and `strain_coefficients (a..e)` above were tuned using **2022–2023 dates only** (train window). Treat 2024–2025 as out-of-sample evaluation when backtesting.
