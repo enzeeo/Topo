@@ -90,46 +90,61 @@ def run_daily_ingest(config: ScraperConfig, run_date: date) -> ScraperResult:
                 else:
                     fetched_dates_list.append(single_date)
             fetched_dates = sorted(fetched_dates_list)
-    
+
+    notes_list_bad: list[str] = []
+    skipped_due_to_bad = False
+
     if normalized_dataframe is not None and not normalized_dataframe.empty:
         cleaned_dataframe, duplicate_count = dedupe_prices(normalized_dataframe)
         bad_value_count = count_bad_value_rows(cleaned_dataframe)
-        
+
         if bad_value_count > 0:
-            raise ValueError(
-                f"Found {bad_value_count} rows with invalid prices (NaN, inf, or <= 0)"
-            )
-        
-        coerced_dataframe = coerce_price_types(cleaned_dataframe)
-        # `dates_written` here means "newly added trading dates" (not re-fetched lookback dates).
-        dates_written = write_prices_parquet(coerced_dataframe, config.price_store_dir)
-        
-        if len(fetched_dates) > 0:
-            most_recent_fetched_date = max(fetched_dates)
-            
-            # Merge with existing data to check for tickers that might have historical data
-            prices_parquet_path = config.price_store_dir / "prices.parquet"
-            if prices_parquet_path.exists():
-                existing_dataframe = pd.read_parquet(prices_parquet_path)
-                if not existing_dataframe.empty:
-                    combined_for_check = pd.concat([existing_dataframe, coerced_dataframe], ignore_index=True)
-                    combined_for_check = combined_for_check.drop_duplicates(subset=["date", "ticker"], keep="last")
+            # Do not add anything to prices; record in QC and complete the run.
+            dates_written = []
+            skipped_due_to_bad = True
+            notes_list_bad = [f"Skipped writing prices: {bad_value_count} invalid rows (NaN, inf, or <= 0)"]
+            print(f"Skipping write: {bad_value_count} rows with invalid prices (NaN, inf, or <= 0)")
+            missing_tickers = []
+            if config.price_store_dir.joinpath("prices.parquet").exists():
+                existing = pd.read_parquet(config.price_store_dir / "prices.parquet")
+                if not existing.empty:
+                    existing_dates = sorted(pd.to_datetime(existing["date"]).dt.date.unique())
+                    if existing_dates:
+                        last = existing_dates[-1]
+                        missing_tickers = find_missing_tickers_for_date(
+                            existing, universe.tickers, last
+                        )
+        else:
+            notes_list_bad = []
+            coerced_dataframe = coerce_price_types(cleaned_dataframe)
+            dates_written = write_prices_parquet(coerced_dataframe, config.price_store_dir)
+
+            if len(fetched_dates) > 0:
+                most_recent_fetched_date = max(fetched_dates)
+                prices_parquet_path = config.price_store_dir / "prices.parquet"
+                if prices_parquet_path.exists():
+                    existing_dataframe = pd.read_parquet(prices_parquet_path)
+                    if not existing_dataframe.empty:
+                        combined_for_check = pd.concat(
+                            [existing_dataframe, coerced_dataframe], ignore_index=True
+                        )
+                        combined_for_check = combined_for_check.drop_duplicates(
+                            subset=["date", "ticker"], keep="last"
+                        )
+                    else:
+                        combined_for_check = coerced_dataframe
                 else:
                     combined_for_check = coerced_dataframe
+                missing_tickers = find_missing_tickers_for_date(
+                    combined_for_check, universe.tickers, most_recent_fetched_date
+                )
+                print(f"Fetched data for {len(coerced_dataframe)} rows across {len(fetched_dates)} dates")
+                print(f"Missing {len(missing_tickers)} tickers for {most_recent_fetched_date}")
+                if 0 < len(missing_tickers) <= 10:
+                    print(f"Missing tickers: {missing_tickers}")
             else:
-                combined_for_check = coerced_dataframe
-            
-            missing_tickers = find_missing_tickers_for_date(
-                combined_for_check, universe.tickers, most_recent_fetched_date
-            )
-            print(f"Fetched data for {len(coerced_dataframe)} rows across {len(fetched_dates)} dates")
-            print(f"Checking missing tickers for most recent date: {most_recent_fetched_date}")
-            print(f"Missing {len(missing_tickers)} tickers for {most_recent_fetched_date}")
-            if len(missing_tickers) > 0 and len(missing_tickers) <= 10:
-                print(f"Missing tickers: {missing_tickers}")
-        else:
-            missing_tickers = []
-            print(f"Fetched data for {len(coerced_dataframe)} rows but no dates found")
+                missing_tickers = []
+                print(f"Fetched data for {len(coerced_dataframe)} rows but no dates found")
     else:
         dates_written = []
         duplicate_count = 0
@@ -201,7 +216,8 @@ def run_daily_ingest(config: ScraperConfig, run_date: date) -> ScraperResult:
     notes_list = []
     if len(missing_tickers) > 0:
         notes_list.append(f"Missing data for {len(missing_tickers)} tickers on {run_date}")
-    
+    notes_list.extend(notes_list_bad)
+
     qc_report = build_qc_report(
         run_date=run_date,
         fetched_dates=fetched_dates,
@@ -211,19 +227,24 @@ def run_daily_ingest(config: ScraperConfig, run_date: date) -> ScraperResult:
         bad_value_rows=bad_value_count,
         notes=notes_list,
     )
-    
-    # Only write QC report if new trading-day rows were fetched and written.
+
+    # Write QC when we wrote new data, or when we fetched but skipped due to invalid prices.
     if len(dates_written) > 0:
         write_qc_report_json(qc_report, config.qc_out_dir)
         print(f"QC report written for {run_date} (new data: {len(dates_written)} dates)")
+    elif skipped_due_to_bad:
+        write_qc_report_json(qc_report, config.qc_out_dir)
+        print(f"QC report written for {run_date} (skipped write: invalid prices)")
     else:
         print(f"No new data fetched for {run_date}. Using existing data. Skipping QC report creation.")
     
     # Treat missing tickers as a QC signal, not a hard failure.
-    # We want scheduled runs (weekends/holidays/no-new-data) to succeed so workflows don't fail noisily.
-    # Hard-fail only on invalid numeric data, or if we *claim* we added new dates but every ticker is missing.
+    # When we skip write due to invalid prices, we still complete the run (write QC, no crash).
     all_missing_for_universe = (len(universe.tickers) > 0) and (len(missing_tickers) == len(universe.tickers))
-    run_ok = (bad_value_count == 0) and (not (dates_written and all_missing_for_universe))
+    run_ok = (
+        (skipped_due_to_bad or bad_value_count == 0)
+        and (not (dates_written and all_missing_for_universe))
+    )
     
     result = ScraperResult(
         ok=run_ok,
