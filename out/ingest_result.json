@@ -1,6 +1,8 @@
 {
-  "run_date": "2026-01-25",
+  "run_date": "2026-01-26",
   "new_data": false,
-  "prices_dates_added": [],
+  "prices_dates_added": [
+    "2026-01-26"
+  ],
   "new_dates": []
 }
