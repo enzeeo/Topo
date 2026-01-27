@@ -240,11 +240,9 @@ def run_daily_ingest(config: ScraperConfig, run_date: date) -> ScraperResult:
     
     # Treat missing tickers as a QC signal, not a hard failure.
     # When we skip write due to invalid prices, we still complete the run (write QC, no crash).
-    all_missing_for_universe = (len(universe.tickers) > 0) and (len(missing_tickers) == len(universe.tickers))
-    run_ok = (
-        (skipped_due_to_bad or bad_value_count == 0)
-        and (not (dates_written and all_missing_for_universe))
-    )
+    # Only fail if we have unhandled invalid prices (which we now skip gracefully, so this shouldn't happen).
+    # Missing tickers are always just warnings in QC.
+    run_ok = skipped_due_to_bad or bad_value_count == 0
     
     result = ScraperResult(
         ok=run_ok,

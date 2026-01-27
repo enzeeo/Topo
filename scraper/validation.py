@@ -42,8 +42,10 @@ def find_missing_tickers_for_date(
     Returns:
         List of tickers missing that date.
     """
-    target_date_pandas = pd.to_datetime(target_date)
-    date_filtered_dataframe = df[df["date"] == target_date_pandas]
+    # Normalize dates to date() objects for reliable comparison.
+    # df["date"] may be Timestamp (from normalized fetch) or date() (from parquet).
+    df_dates_normalized = pd.to_datetime(df["date"]).dt.date
+    date_filtered_dataframe = df[df_dates_normalized == target_date]
     tickers_with_data = set(date_filtered_dataframe["ticker"].unique())
     all_tickers_set = set(tickers)
     missing_tickers = sorted(list(all_tickers_set - tickers_with_data))
