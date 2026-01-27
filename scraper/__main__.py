@@ -5,7 +5,7 @@ Entry point for the daily ingestion pipeline.
 import json
 import os
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -228,15 +228,20 @@ def run_daily_ingest(config: ScraperConfig, run_date: date) -> ScraperResult:
         notes=notes_list,
     )
 
-    # Write QC when we wrote new data, or when we fetched but skipped due to invalid prices.
-    if len(dates_written) > 0:
+    # Always write QC when we run ingestion (even if no new dates were added).
+    # This provides visibility into missing tickers, fetched dates, etc.
+    if len(fetched_dates) > 0 or skipped_due_to_bad or len(dates_written) > 0:
         write_qc_report_json(qc_report, config.qc_out_dir)
-        print(f"QC report written for {run_date} (new data: {len(dates_written)} dates)")
-    elif skipped_due_to_bad:
-        write_qc_report_json(qc_report, config.qc_out_dir)
-        print(f"QC report written for {run_date} (skipped write: invalid prices)")
+        if len(dates_written) > 0:
+            print(f"QC report written for {run_date} (new data: {len(dates_written)} dates)")
+        elif skipped_due_to_bad:
+            print(f"QC report written for {run_date} (skipped write: invalid prices)")
+        elif len(fetched_dates) > 0:
+            print(f"QC report written for {run_date} (fetched {len(fetched_dates)} dates, no new dates added)")
+        else:
+            print(f"QC report written for {run_date}")
     else:
-        print(f"No new data fetched for {run_date}. Using existing data. Skipping QC report creation.")
+        print(f"No data fetched for {run_date}. Skipping QC report creation.")
     
     # Treat missing tickers as a QC signal, not a hard failure.
     # When we skip write due to invalid prices, we still complete the run (write QC, no crash).
@@ -262,9 +267,12 @@ if __name__ == "__main__":
     if run_date_string:
         run_date = date.fromisoformat(run_date_string)
     else:
+        # Get current date in NY timezone (market timezone).
+        # Use datetime.now() with timezone, then convert to date to ensure we get the correct calendar date.
         market_timezone = tz.gettz("America/New_York")
-        today_pandas = pd.Timestamp.now(tz=market_timezone)
-        run_date = today_pandas.date()
+        now_ny = datetime.now(tz=market_timezone)
+        run_date = now_ny.date()
+        print(f"Using NY timezone date: {run_date} (NY time now: {now_ny.strftime('%Y-%m-%d %H:%M:%S %Z')})")
     
     project_root = Path(__file__).parent.parent
     universe_path = project_root / "data" / "universe.csv"
